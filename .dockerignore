@@ -1,0 +1,7 @@
+.git
+.gitignore
+.github
+**/.DS_Store
+**/node_modules
+**/vendor
+**/.env
