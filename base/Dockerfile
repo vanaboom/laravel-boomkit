@@ -12,8 +12,9 @@ ARG USE_CUSTOM_APT_MIRROR=false
 ARG CUSTOM_APT_MIRROR="http://deb.debian.org/debian"
 ARG CUSTOM_APT_SECURITY_MIRROR="http://deb.debian.org/debian-security"
 ARG NPM_REGISTRY="https://registry.npmjs.org"
+ARG TIMEZONE="UTC"
 
-ENV TZ=Asia/Tehran \
+ENV TZ=${TIMEZONE} \
     DEBIAN_FRONTEND=noninteractive \
     PHP_VERSION_SHORT=8.4
 
@@ -141,7 +142,9 @@ RUN set -eux; \
 RUN set -eux; \
     mkdir -p /root/.ssh; \
     cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini; \
-    sed -i 's@;date.timezone =@date.timezone = Asia/Tehran@' /usr/local/etc/php/php.ini;
+    sed -i "s@;date.timezone =@date.timezone = ${TZ}@" /usr/local/etc/php/php.ini; \
+    echo "${TZ}" > /etc/timezone; \
+    ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime
 
 # ---------- Composer ----------
 ENV COMPOSER_ALLOW_SUPERUSER=1
