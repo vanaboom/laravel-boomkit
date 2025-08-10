@@ -1,9 +1,9 @@
 FROM php:8.4-cli-bookworm
 
 # ---------- OCI Labels ----------
-LABEL org.opencontainers.image.title="laravel-basebox (base)"
+LABEL org.opencontainers.image.title="laravel-boomkit (base)"
 LABEL org.opencontainers.image.description="Production-ready Laravel base image on PHP 8.4 (Debian Bookworm) with common PHP/PECL extensions, MSSQL tools, Node.js, Ioncube, and Laravel Echo Server."
-LABEL org.opencontainers.image.source="https://github.com/vanaboom/laravel-basebox"
+LABEL org.opencontainers.image.source="https://github.com/vanaboom/laravel-boomkit"
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL maintainer="Majid Hadavand"
 
@@ -101,8 +101,15 @@ RUN set -eux; \
     docker-php-ext-configure gd --with-freetype --with-jpeg; \
     docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu; \
     docker-php-ext-install -j"$(nproc)" $PHP_EXTENSIONS; \
-    pecl install -o -f apcu redis yaml sqlsrv pdo_sqlsrv; \
-    docker-php-ext-enable apcu redis yaml sqlsrv pdo_sqlsrv; \
+    pecl channel-update pecl.php.net; \
+    pecl install -o -f apcu redis yaml igbinary || true; \
+    pecl install -o -f sqlsrv pdo_sqlsrv || echo "Skipping sqlsrv/pdo_sqlsrv on PHP ${PHP_VERSION_SHORT}"; \
+    php -m | grep -qi apcu       && docker-php-ext-enable apcu       || true; \
+    php -m | grep -qi igbinary   && docker-php-ext-enable igbinary    || true; \
+    php -m | grep -qi redis      && docker-php-ext-enable redis       || true; \
+    php -m | grep -qi yaml       && docker-php-ext-enable yaml        || true; \
+    php -m | grep -qi sqlsrv     && docker-php-ext-enable sqlsrv      || true; \
+    php -m | grep -qi pdo_sqlsrv && docker-php-ext-enable pdo_sqlsrv  || true; \
     apt-get purge -y --auto-remove $BUILD_DEPS; \
     apt-get clean; rm -rf /var/lib/apt/lists/*
 
@@ -135,9 +142,7 @@ RUN set -eux; \
 RUN set -eux; \
     mkdir -p /root/.ssh; \
     cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini; \
-    sed -i 's@;date.timezone =@date.timezone = Asia/Tehran@' /usr/local/etc/php/php.ini; \
-    ssh-keyscan -H github.com gitlab.com gitlab.vanaboom.ir >> /root/.ssh/known_hosts; \
-    chmod go-rwx /root/.ssh/
+    sed -i 's@;date.timezone =@date.timezone = Asia/Tehran@' /usr/local/etc/php/php.ini;
 
 # ---------- Composer ----------
 ENV COMPOSER_ALLOW_SUPERUSER=1
