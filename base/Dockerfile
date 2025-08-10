@@ -102,16 +102,15 @@ RUN set -eux; \
     docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu; \
     docker-php-ext-install -j"$(nproc)" $PHP_EXTENSIONS; \
     pecl channel-update pecl.php.net; \
-    pecl install -o -f apcu redis yaml igbinary || true; \
+    pecl install -o -f igbinary; \
+    pecl install -o -f redis; \
+    pecl install -o -f apcu yaml; \
     pecl install -o -f sqlsrv pdo_sqlsrv || echo "Skipping sqlsrv/pdo_sqlsrv on PHP ${PHP_VERSION_SHORT}"; \
-    php -m | grep -qi apcu       && docker-php-ext-enable apcu       || true; \
-    php -m | grep -qi igbinary   && docker-php-ext-enable igbinary    || true; \
-    php -m | grep -qi redis      && docker-php-ext-enable redis       || true; \
-    php -m | grep -qi yaml       && docker-php-ext-enable yaml        || true; \
-    php -m | grep -qi sqlsrv     && docker-php-ext-enable sqlsrv      || true; \
-    php -m | grep -qi pdo_sqlsrv && docker-php-ext-enable pdo_sqlsrv  || true; \
+    docker-php-ext-enable igbinary redis apcu yaml || true; \
+    docker-php-ext-enable sqlsrv pdo_sqlsrv || true; \
     apt-get purge -y --auto-remove $BUILD_DEPS; \
     apt-get clean; rm -rf /var/lib/apt/lists/*
+
 
 # ---------- Runtime packages ----------
 RUN set -eux; \
