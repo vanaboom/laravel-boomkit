@@ -93,6 +93,7 @@ ENV RUN_DEPS=" \
     unixodbc \
     unzip \
     zip \
+    dnsutils \
 "
 
 # ---------- Install & build ----------
@@ -111,7 +112,6 @@ RUN set -eux; \
     docker-php-ext-enable sqlsrv pdo_sqlsrv || true; \
     apt-get purge -y --auto-remove $BUILD_DEPS; \
     apt-get clean; rm -rf /var/lib/apt/lists/*
-
 
 # ---------- Runtime packages ----------
 RUN set -eux; \
@@ -134,8 +134,8 @@ ENV PATH="${PATH}:/opt/mssql-tools18/bin"
 RUN set -eux; \
     curl -fsSL "https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz" -o /tmp/ioncube.tar.gz; \
     tar -xzf /tmp/ioncube.tar.gz -C /tmp; \
-    cp "/tmp/ioncube/ioncube_loader_lin_${PHP_VERSION_SHORT}.so" "$(php -r 'echo ini_get("extension_dir");')/"; \
-    echo "zend_extension=$(php -r 'echo ini_get("extension_dir");')/ioncube_loader_lin_${PHP_VERSION_SHORT}.so" > /usr/local/etc/php/conf.d/00-ioncube.ini; \
+    cp "/tmp/ioncube/ioncube_loader_lin_${PHP_VERSION_SHORT}.so" "$(php -r 'echo ini_get(\"extension_dir\");')/"; \
+    echo "zend_extension=$(php -r 'echo ini_get(\"extension_dir\");')/ioncube_loader_lin_${PHP_VERSION_SHORT}.so" > /usr/local/etc/php/conf.d/00-ioncube.ini; \
     rm -rf /tmp/ioncube /tmp/ioncube.tar.gz
 
 # ---------- PHP config & SSH known_hosts ----------
@@ -159,6 +159,10 @@ RUN set -eux; \
     npm config set registry "${NPM_REGISTRY}"; \
     npm install -g laravel-echo-server; \
     npm cache clean --force
+
+# ---------- Optional: redis serializer igbinary ----------
+# (Uncomment if you want it baked in the image)
+# RUN printf "redis.serializer=igbinary\n" > /usr/local/etc/php/conf.d/zz-redis.ini
 
 # ---------- Defaults ----------
 WORKDIR /app
