@@ -8,8 +8,7 @@ LABEL org.opencontainers.image.licenses="MIT"
 LABEL maintainer="Mohsen Jadidi"
 
 # ---------- Build args / envs ----------
-ARG USE_CUSTOM_APK_MIRROR=true
-ARG CUSTOM_APK_MIRROR="https://calix.vanaboom.ir/alpine"
+ARG CUSTOM_APK_MIRROR="https://dl-cdn.alpinelinux.org/alpine"
 ARG NPM_REGISTRY="https://registry.npmjs.org"
 ARG TIMEZONE="UTC"
 
@@ -18,8 +17,8 @@ ENV TZ="${TIMEZONE}" \
     PATH="/opt/mssql-tools18/bin:${PATH}"
 
 # ---------- (Optional) set custom apk mirror ----------
-RUN if [ "$USE_CUSTOM_APK_MIRROR" = "true" ]; then \
-      sed -i "s|https://dl-cdn.alpinelinux.org/alpine|${CUSTOM_APK_MIRROR}|g" /etc/apk/repositories; \
+RUN if [ -f /etc/apk/repositories ]; then \
+        sed -i "s|https://dl-cdn.alpinelinux.org/alpine|${CUSTOM_APK_MIRROR}|g" /etc/apk/repositories; \
     fi
 
 # ---------- Build deps ----------
@@ -96,8 +95,7 @@ ENV RUN_DEPS=" \
 "
 
 # ---------- Install & build ----------
-RUN set -eux; \
-    apk update; \
+RUN apk update; \
     apk add --no-cache ${BUILD_DEPS} ${PHPIZE_DEPS}; \
     \
     docker-php-ext-configure gd --with-freetype --with-jpeg; \
@@ -125,8 +123,7 @@ RUN set -eux; \
 # ---------- MSSQL tools (Alpine) ----------
 ENV ACCEPT_EULA=Y
 
-RUN set -eux; \
-    mkdir -p /opt/microsoft/msodbcsql18; \
+RUN mkdir -p /opt/microsoft/msodbcsql18; \
     echo "${ACCEPT_EULA}" > /opt/microsoft/msodbcsql18/ACCEPT_EULA; \
     \
     cd /tmp; \
@@ -145,24 +142,36 @@ RUN set -eux; \
 # Ensure PATH is updated for all processes in the container
 ENV PATH="${PATH}:/opt/mssql-tools18/bin"
 
-RUN set -eux; \
-    curl -fsSL "https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin-musl_x86-64.tar.gz" -o /tmp/ioncube.tar.gz; \
+# ---------- Ioncube (Alpine / musl) ----------
+# ---------- Ioncube (Alpine / musl) ----------
+# ---------- Ioncube (Alpine / musl) ----------
+RUN curl -fsSL "https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin-musl_x86-64.tar.gz" -o /tmp/ioncube.tar.gz; \
+    \
     mkdir -p /tmp/ioncube; \
-    tar -xzf /tmp/ioncube.tar.gz -C /tmp; \
+    tar -xzf /tmp/ioncube.tar.gz -C /tmp/ioncube --strip-components=1; \
     \
-    PHP_EXT_DIR="$(php -r 'echo ini_get(\"extension_dir\");')"; \
-    PHP_VER_SHORT="$(php -r 'echo PHP_MAJOR_VERSION.\".\".PHP_MINOR_VERSION;')"; \
+    PHP_EXT_DIR="$(php -r "echo ini_get('extension_dir');")"; \
+    PHP_MAJ_MIN="$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")"; \
+    LOADER_SO="/tmp/ioncube/ioncube_loader_lin-musl_${PHP_MAJ_MIN}.so"; \
     \
-    cp "/tmp/ioncube/ioncube_loader_lin_${PHP_VER_SHORT}.so" "${PHP_EXT_DIR}/"; \
+    echo "Using PHP extension dir: ${PHP_EXT_DIR}"; \
+    echo "Expecting ionCube loader: ${LOADER_SO}"; \
     \
-    echo "zend_extension=${PHP_EXT_DIR}/ioncube_loader_lin_${PHP_VER_SHORT}.so" > /usr/local/etc/php/conf.d/00-ioncube.ini; \
+    if [ ! -f "${LOADER_SO}" ]; then \
+        echo 'Available loaders in /tmp/ioncube:'; \
+        ls -1 /tmp/ioncube; \
+        echo "ERROR: ionCube loader for PHP ${PHP_MAJ_MIN} not found in musl archive."; \
+        exit 1; \
+    fi; \
+    \
+    cp "${LOADER_SO}" "${PHP_EXT_DIR}/"; \
+    \
+    echo "zend_extension=${PHP_EXT_DIR}/$(basename "${LOADER_SO}")" > /usr/local/etc/php/conf.d/00-ioncube.ini; \
     \
     rm -rf /tmp/ioncube /tmp/ioncube.tar.gz
 
-
 # ---------- PHP config & SSH known_hosts ----------
-RUN set -eux; \
-    mkdir -p /root/.ssh; \
+RUN mkdir -p /root/.ssh; \
     \
     cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini; \
     \
@@ -174,8 +183,7 @@ RUN set -eux; \
 # ---------- Composer ----------
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
-RUN set -eux; \
-    curl -fsSL https://getcomposer.org/installer -o /tmp/composer-setup.php; \
+RUN curl -fsSL https://getcomposer.org/installer -o /tmp/composer-setup.php; \
     \
     php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer; \
     \
@@ -184,8 +192,7 @@ RUN set -eux; \
     composer --version
 
 # ---------- Laravel Echo Server ----------
-RUN set -eux; \
-    npm config set registry "${NPM_REGISTRY}"; \
+RUN npm config set registry "${NPM_REGISTRY}"; \
     \
     npm install -g laravel-echo-server; \
     \
