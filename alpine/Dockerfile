@@ -92,6 +92,7 @@ ENV RUN_DEPS=" \
     unzip \
     zip \
     bind-tools \
+    bash \
 "
 
 # ---------- Install & build ----------
