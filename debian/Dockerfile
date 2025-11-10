@@ -1,11 +1,11 @@
+# Debian (Bookworm) with MSSQL, Node/NPM, Echo Server, ionCube
 FROM php:8.4-cli-bookworm
 
 # ---------- OCI Labels ----------
-LABEL org.opencontainers.image.title="laravel-boomkit (debian)"
-LABEL org.opencontainers.image.description="Production-ready Laravel base image on PHP 8.4 (Debian Bookworm) with common PHP/PECL extensions, MSSQL tools, Node.js, Ioncube, and Laravel Echo Server."
+LABEL org.opencontainers.image.title="laravel-boomkit (debian-tools)"
+LABEL org.opencontainers.image.description="Laravel base on PHP 8.4 (Debian Bookworm) with common PHP/PECL extensions, MSSQL tools, Node.js, ionCube, and Laravel Echo Server."
 LABEL org.opencontainers.image.source="https://github.com/vanaboom/laravel-boomkit"
 LABEL org.opencontainers.image.licenses="MIT"
-
 LABEL maintainer="Majid Hadavand"
 
 # ---------- Build args / envs ----------
@@ -18,145 +18,88 @@ ENV TZ=${TIMEZONE} \
     DEBIAN_FRONTEND=noninteractive \
     PHP_VERSION_SHORT=8.4
 
-# ---------- (Optional) set custom apt mirror ----------
-RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+# ---------- Single RUN: build + enable + cleanup build-deps (keep runtimes) ----------
+RUN set -eux; \
+    # (0) Optional: switch APT mirrors
+    if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
       sed -i "s|^URIs: http://deb.debian.org/debian$|URIs: ${CUSTOM_APT_MIRROR}|g" /etc/apt/sources.list.d/debian.sources; \
       sed -i "s|^URIs: http://deb.debian.org/debian-security$|URIs: ${CUSTOM_APT_SECURITY_MIRROR}|g" /etc/apt/sources.list.d/debian.sources; \
-    fi
-
-# ---------- Build deps ----------
-ENV BUILD_DEPS=" \
-    libfreetype6-dev \
-    libgmp-dev \
-    libicu-dev \
-    libjpeg-dev \
-    libonig-dev \
-    libldap2-dev \
-    libldb-dev \
-    libpng-dev \
-    libpq-dev \
-    libsqlite3-dev \
-    libyaml-dev \
-    libzip-dev \
-    unixodbc-dev \
-    zlib1g-dev \
-"
-
-# ---------- PHP core & PECL ext lists ----------
-ENV PHP_EXTENSIONS=" \
-    bcmath \
-    gd \
-    gmp \
-    intl \
-    ldap \
-    mbstring \
-    opcache \
-    pcntl \
-    pdo \
-    pdo_pgsql \
-    pdo_sqlite \
-    pgsql \
-    sockets \
-    zip \
-"
-ENV PECL_EXTENSIONS=" \
-    apcu \
-    redis \
-    sqlsrv \
-    pdo_sqlsrv \
-    yaml \
-"
-
-# ---------- Runtime deps ----------
-ENV RUN_DEPS=" \
-    ca-certificates \
-    curl \
-    git \
-    gnupg \
-    iputils-ping \
-    libonig5 \
-    libgd3 \
-    libgmp10 \
-    libicu72 \
-    libldap-2.5-0 \
-    libpq5 \
-    libyaml-0-2 \
-    libzip4 \
-    netcat-openbsd \
-    nodejs \
-    npm \
-    openssh-client \
-    openssl \
-    sqlite3 \
-    supervisor \
-    tzdata \
-    unixodbc \
-    unzip \
-    zip \
-    dnsutils \
-"
-
-# ---------- Install & build ----------
-RUN apt-get update; \
-    apt-get install -y --no-install-recommends $BUILD_DEPS $PHPIZE_DEPS; \
+    fi; \
+    \
+    # (1) Install build deps (as plain list on Debian) + runtime deps (separate)
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+      $PHPIZE_DEPS \
+      libfreetype6-dev libgmp-dev libicu-dev libjpeg-dev libonig-dev \
+      libldap2-dev libldb-dev libpng-dev libpq-dev libsqlite3-dev \
+      libyaml-dev libzip-dev unixodbc-dev zlib1g-dev; \
+    apt-get install -y --no-install-recommends \
+      ca-certificates curl git gnupg iputils-ping \
+      libonig5 libgd3 libgmp10 libicu72 libldap-2.5-0 libpq5 \
+      libyaml-0-2 libzip4 netcat-openbsd nodejs npm \
+      openssh-client openssl sqlite3 supervisor tzdata unixodbc \
+      unzip zip dnsutils; \
+    \
+    # (2) Build PHP core extensions
     docker-php-ext-configure gd --with-freetype --with-jpeg; \
     docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu; \
-    docker-php-ext-install -j"$(nproc)" $PHP_EXTENSIONS
-
-# ---------- Runtime packages ----------
-RUN apt-get install -y --no-install-recommends $RUN_DEPS; \
-    apt-get clean; rm -rf /var/lib/apt/lists/*
-
-RUN pecl channel-update pecl.php.net; \
-    pecl install -o -f igbinary; \
-    pecl install -o -f redis; \
-    pecl install -o -f apcu yaml; \
-    pecl install -o -f sqlsrv pdo_sqlsrv || echo "Skipping sqlsrv/pdo_sqlsrv on PHP ${PHP_VERSION_SHORT}"; \
+    docker-php-ext-install -j"$(nproc)" \
+      bcmath gd gmp intl ldap mbstring opcache pcntl pdo pdo_pgsql \
+      pdo_sqlite pgsql sockets zip; \
+    \
+    # (3) PECL extensions (includes sqlsrv/pdo_sqlsrv)
+    pecl channel-update pecl.php.net; \
+    pecl install -o -f igbinary redis apcu yaml || true; \
+    pecl install -o -f sqlsrv pdo_sqlsrv || true; \
     docker-php-ext-enable igbinary redis apcu yaml || true; \
     docker-php-ext-enable sqlsrv pdo_sqlsrv || true; \
-    apt-get purge -y --auto-remove $BUILD_DEPS $PHPIZE_DEPS; \
-    rm -rf /tmp/pear ~/.pearrc; \
-    apt-get clean; rm -rf /var/lib/apt/lists/*
-
-# ---------- MSSQL tools ----------
-ENV ACCEPT_EULA=Y
-RUN curl -sSL -O "https://packages.microsoft.com/config/debian/$(. /etc/os-release && echo ${VERSION_ID%%.*})/packages-microsoft-prod.deb"; \
+    rm -rf /tmp/pear ~/.pearrc || true; \
+    \
+    # (4) MSSQL tools (runtime binaries) with EULA preseed + env
+    curl -sSL -O "https://packages.microsoft.com/config/debian/$(. /etc/os-release && echo ${VERSION_ID%%.*})/packages-microsoft-prod.deb"; \
     dpkg -i packages-microsoft-prod.deb; rm -f packages-microsoft-prod.deb; \
     apt-get update; \
-    apt-get install -y msodbcsql18 mssql-tools18 unixodbc-dev libgssapi-krb5-2; \
-    apt-get clean; rm -rf /var/lib/apt/lists/*; \
-    echo 'export PATH="$PATH:/opt/mssql-tools18/bin"' >> /etc/bash.bashrc
-ENV PATH="${PATH}:/opt/mssql-tools18/bin"
-
-# ---------- Ioncube ----------
-RUN curl -fsSL "https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz" -o /tmp/ioncube.tar.gz; \
-    tar -xzf /tmp/ioncube.tar.gz -C /tmp; \
-    cp "/tmp/ioncube/ioncube_loader_lin_${PHP_VERSION_SHORT}.so" "$(php -r 'echo ini_get("extension_dir");')/"; \
-    echo "zend_extension=$(php -r 'echo ini_get("extension_dir");')/ioncube_loader_lin_${PHP_VERSION_SHORT}.so" > /usr/local/etc/php/conf.d/00-ioncube.ini; \
-    rm -rf /tmp/ioncube /tmp/ioncube.tar.gz
-
-# ---------- PHP config & SSH known_hosts ----------
-RUN mkdir -p /root/.ssh; \
+    # Preseed EULA for non-interactive installation
+    echo "msodbcsql18 msodbcsql/ACCEPT_EULA boolean true" | debconf-set-selections; \
+    echo "mssql-tools18 mssql-tools/ACCEPT_EULA boolean true" | debconf-set-selections; \
+    # Install with ACCEPT_EULA=Y so package preinst sees it
+    ACCEPT_EULA=Y DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      msodbcsql18 mssql-tools18 libgssapi-krb5-2; \
+    \
+    # (5) ionCube loader
+    curl -fsSL "https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz" -o /tmp/ioncube.tar.gz || true; \
+    if [ -s /tmp/ioncube.tar.gz ]; then \
+      tar -xzf /tmp/ioncube.tar.gz -C /tmp; \
+      cp "/tmp/ioncube/ioncube_loader_lin_${PHP_VERSION_SHORT}.so" "$(php -r 'echo ini_get(\"extension_dir\");')/" 2>/dev/null || true; \
+      echo "zend_extension=$(php -r 'echo ini_get(\"extension_dir\");')/ioncube_loader_lin_${PHP_VERSION_SHORT}.so" > /usr/local/etc/php/conf.d/00-ioncube.ini || true; \
+    fi; \
+    rm -rf /tmp/ioncube /tmp/ioncube.tar.gz; \
+    \
+    # (6) php.ini & timezone
     cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini; \
     sed -i "s@;date.timezone =@date.timezone = ${TZ}@" /usr/local/etc/php/php.ini; \
     echo "${TZ}" > /etc/timezone; \
-    ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime
-
-# ---------- Composer ----------
-ENV COMPOSER_ALLOW_SUPERUSER=1
-RUN curl -fsSL https://getcomposer.org/installer -o /tmp/composer-setup.php; \
+    ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime; \
+    \
+    # (7) Composer + Echo Server (global) and clean caches
+    curl -fsSL https://getcomposer.org/installer -o /tmp/composer-setup.php; \
     php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer; \
     rm -f /tmp/composer-setup.php; \
-    composer --version
+    composer --version; \
+    npm config set registry "${NPM_REGISTRY}"; \
+    npm i -g laravel-echo-server; \
+    npm cache clean --force; \
+    \
+    # (8) Clean build deps in SAME layer + apt caches
+    apt-get purge -y --auto-remove \
+      $PHPIZE_DEPS \
+      libfreetype6-dev libgmp-dev libicu-dev libjpeg-dev libonig-dev \
+      libldap2-dev libldb-dev libpng-dev libpq-dev libsqlite3-dev \
+      libyaml-dev libzip-dev unixodbc-dev zlib1g-dev; \
+    apt-get clean; rm -rf /var/lib/apt/lists/*; \
+    \
+    # (9) SSH known_hosts
+    mkdir -p /root/.ssh && chmod 700 /root/.ssh; \
+    ssh-keyscan -t rsa github.com gitlab.com >> /root/.ssh/known_hosts
 
-# ---------- Laravel Echo Server ----------
-RUN npm config set registry "${NPM_REGISTRY}"; \
-    npm install -g laravel-echo-server; \
-    npm cache clean --force
-
-# ---------- Optional: redis serializer igbinary ----------
-# (Uncomment if you want it baked in the image)
-# RUN printf "redis.serializer=igbinary\n" > /usr/local/etc/php/conf.d/zz-redis.ini
-
-# ---------- Defaults ----------
 WORKDIR /app
