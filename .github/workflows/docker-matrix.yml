@@ -87,7 +87,7 @@ jobs:
           SUFFIX="${{ matrix.tag_suffix }}"
           PUSH_LATEST="${{ matrix.push_latest }}"
 
-          # Inject ref values from GitHub context (reliable)
+          # Pull context explicitly
           REF_TYPE="${{ github.ref_type }}"
           REF_NAME="${{ github.ref_name }}"
           EVENT="${{ github.event_name }}"
@@ -113,16 +113,21 @@ jobs:
             echo "Path: workflow_dispatch(version=${V})"
           fi
 
-          # 2) Push tag: accept vMAJOR.MINOR or vMAJOR.MINOR.PATCH
-          if [[ "${REF_TYPE}" == "tag" && "${REF_NAME}" =~ ^v([0-9]+(?:\.[0-9]+){1,2})$ ]]; then
-            VER="${BASH_REMATCH[1]}"
-            add_tag "${VER}-${SUFFIX}"
-            add_tag "${SUFFIX}"
-            if [[ "${PUSH_LATEST}" == "true" ]]; then add_tag "latest"; fi
-            echo "Path: push tag (VER=${VER})"
+          # 2) Push tag: vMAJOR.MINOR or vMAJOR.MINOR.PATCH
+          if [[ "${REF_TYPE}" == "tag" ]]; then
+            VER_STRIPPED="${REF_NAME#v}"   # remove leading 'v'
+            if [[ "${VER_STRIPPED}" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]]; then
+              VER="${VER_STRIPPED}"
+              add_tag "${VER}-${SUFFIX}"
+              add_tag "${SUFFIX}"
+              if [[ "${PUSH_LATEST}" == "true" ]]; then add_tag "latest"; fi
+              echo "Path: push tag (VER=${VER})"
+            else
+              echo "Tag '${REF_NAME}' does not look like a version, skipping versioned tags."
+            fi
           fi
 
-          # 3) (optional) Push to main → rolling only (kept for manual runs against main)
+          # 3) (optional) Push to main → rolling only (kept for manual runs)
           if [[ "${REF_TYPE}" == "branch" && "${REF_NAME}" == "main" ]]; then
             add_tag "${SUFFIX}"
             if [[ "${PUSH_LATEST}" == "true" ]]; then add_tag "latest"; fi
