@@ -17,7 +17,7 @@ on:
         type: string
 
 concurrency:
-  group: docker-${{ github.ref }}
+  group: docker-${{ github.sha }}   # <- dedupe per commit SHA
   cancel-in-progress: true
 
 jobs:
