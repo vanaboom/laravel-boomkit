@@ -107,8 +107,8 @@ jobs:
             fi
           fi
 
-          # 2) Git tag like v1.5.0
-          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+          # 2) Git tag: accept vMAJOR.MINOR or vMAJOR.MINOR.PATCH
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" =~ ^v([0-9]+(?:\.[0-9]+){1,2})$ ]]; then
             VER="${BASH_REMATCH[1]}"
             add_tag "${VER}-${SUFFIX}"
             add_tag "${SUFFIX}"
