@@ -1,0 +1,149 @@
+name: build-and-push-docker-matrix
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag to publish (e.g. 1.5)"
+        required: false
+        type: string
+      variant:
+        description: "Build only one variant (debian|debian-slim|alpine|alpine-slim)"
+        required: false
+        type: string
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Push (${{ matrix.id }})
+    runs-on: ubuntu-latest
+
+    # Matrix controls which folder to use and how to tag it
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # NOTE: comments in English as requested
+          - id: debian
+            context: ./debian
+            tag_suffix: debian
+            push_latest: true
+            platforms: linux/amd64
+          - id: debian-slim
+            context: ./debian-slim
+            tag_suffix: debian-slim
+            push_latest: false
+            platforms: linux/amd64
+          - id: alpine
+            context: ./alpine
+            tag_suffix: alpine
+            push_latest: false
+            platforms: linux/amd64
+          - id: alpine-slim
+            context: ./alpine-slim
+            tag_suffix: alpine-slim
+            push_latest: false
+            platforms: linux/amd64
+
+    env:
+      IMAGE_NAME: vanaboom/laravel-boomkit
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Optional: filter matrix by dispatch input.variant
+      - name: Skip if variant filter does not match
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.variant != '' && inputs.variant != matrix.id }}
+        run: |
+          echo "Skipping matrix '${{ matrix.id }}' because workflow_dispatch variant='${{ inputs.variant }}'"
+          exit 0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compute tags
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO="${IMAGE_NAME}"
+          SUFFIX="${{ matrix.tag_suffix }}"
+          PUSH_LATEST="${{ matrix.push_latest }}"
+          TAGS=()
+
+          # Helper to append a tag if non-empty
+          add_tag() {
+            local t="$1"
+            [[ -n "$t" ]] && TAGS+=("${REPO}:${t}")
+          }
+
+          # 1) Manual input version (workflow_dispatch)
+          if [[ -n "${{ github.event.inputs.version || '' }}" ]]; then
+            V="${{ github.event.inputs.version }}"
+            # versioned tag
+            add_tag "${V}-${SUFFIX}"
+            # rolling alias for this variant
+            add_tag "${SUFFIX}"
+            # latest only for plain debian
+            if [[ "${PUSH_LATEST}" == "true" ]]; then
+              add_tag "latest"
+            fi
+          fi
+
+          # 2) Git tag like v1.5.0
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            VER="${BASH_REMATCH[1]}"
+            add_tag "${VER}-${SUFFIX}"
+            add_tag "${SUFFIX}"
+            if [[ "${PUSH_LATEST}" == "true" ]]; then
+              add_tag "latest"
+            fi
+          fi
+
+          # 3) Push to main (rolling tags only)
+          if [[ "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" == "main" ]]; then
+            add_tag "${SUFFIX}"
+            if [[ "${PUSH_LATEST}" == "true" ]]; then
+              add_tag "latest"
+            fi
+          fi
+
+          # Fallback: ensure at least variant alias exists
+          if [[ "${#TAGS[@]}" -eq 0 ]]; then
+            add_tag "${SUFFIX}"
+            if [[ "${PUSH_LATEST}" == "true" ]]; then
+              add_tag "latest"
+            fi
+          fi
+
+          echo "Computed tags:"
+          printf ' - %s\n' "${TAGS[@]}"
+
+          printf 'tags=%s\n' "$(IFS=, ; echo "${TAGS[*]}")" >> "$GITHUB_OUTPUT"
+
+      - name: Build & Push (${{ matrix.id }})
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          platforms: ${{ matrix.platforms }}
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ matrix.id }}
+          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ matrix.id }},mode=max
