@@ -82,54 +82,58 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           REPO="${IMAGE_NAME}"
           SUFFIX="${{ matrix.tag_suffix }}"
           PUSH_LATEST="${{ matrix.push_latest }}"
+
+          # Inject ref values from GitHub context (reliable)
+          REF_TYPE="${{ github.ref_type }}"
+          REF_NAME="${{ github.ref_name }}"
+          EVENT="${{ github.event_name }}"
+          INPUT_VER="${{ github.event.inputs.version || '' }}"
+
+          echo "== Debug =="
+          echo "EVENT=${EVENT}"
+          echo "REF_TYPE=${REF_TYPE}"
+          echo "REF_NAME=${REF_NAME}"
+          echo "SUFFIX=${SUFFIX}"
+          echo "PUSH_LATEST=${PUSH_LATEST}"
+          echo "INPUT_VER=${INPUT_VER}"
+
           TAGS=()
+          add_tag() { local t="$1"; [[ -n "$t" ]] && TAGS+=("${REPO}:${t}"); }
 
-          # Helper to append a tag if non-empty
-          add_tag() {
-            local t="$1"
-            [[ -n "$t" ]] && TAGS+=("${REPO}:${t}")
-          }
-
-          # 1) Manual input version (workflow_dispatch)
-          if [[ -n "${{ github.event.inputs.version || '' }}" ]]; then
-            V="${{ github.event.inputs.version }}"
-            # versioned tag
+          # 1) Manual dispatch with version input
+          if [[ -n "${INPUT_VER}" ]]; then
+            V="${INPUT_VER}"
             add_tag "${V}-${SUFFIX}"
-            # rolling alias for this variant
             add_tag "${SUFFIX}"
-            # latest only for plain debian
-            if [[ "${PUSH_LATEST}" == "true" ]]; then
-              add_tag "latest"
-            fi
+            if [[ "${PUSH_LATEST}" == "true" ]]; then add_tag "latest"; fi
+            echo "Path: workflow_dispatch(version=${V})"
           fi
 
-          # 2) Git tag: accept vMAJOR.MINOR or vMAJOR.MINOR.PATCH
-          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" =~ ^v([0-9]+(?:\.[0-9]+){1,2})$ ]]; then
+          # 2) Push tag: accept vMAJOR.MINOR or vMAJOR.MINOR.PATCH
+          if [[ "${REF_TYPE}" == "tag" && "${REF_NAME}" =~ ^v([0-9]+(?:\.[0-9]+){1,2})$ ]]; then
             VER="${BASH_REMATCH[1]}"
             add_tag "${VER}-${SUFFIX}"
             add_tag "${SUFFIX}"
-            if [[ "${PUSH_LATEST}" == "true" ]]; then
-              add_tag "latest"
-            fi
+            if [[ "${PUSH_LATEST}" == "true" ]]; then add_tag "latest"; fi
+            echo "Path: push tag (VER=${VER})"
           fi
 
-          # 3) Push to main (rolling tags only)
-          if [[ "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" == "main" ]]; then
+          # 3) (optional) Push to main → rolling only (kept for manual runs against main)
+          if [[ "${REF_TYPE}" == "branch" && "${REF_NAME}" == "main" ]]; then
             add_tag "${SUFFIX}"
-            if [[ "${PUSH_LATEST}" == "true" ]]; then
-              add_tag "latest"
-            fi
+            if [[ "${PUSH_LATEST}" == "true" ]]; then add_tag "latest"; fi
+            echo "Path: push main (rolling)"
           fi
 
-          # Fallback: ensure at least variant alias exists
+          # Fallback: at least the variant alias
           if [[ "${#TAGS[@]}" -eq 0 ]]; then
             add_tag "${SUFFIX}"
-            if [[ "${PUSH_LATEST}" == "true" ]]; then
-              add_tag "latest"
-            fi
+            if [[ "${PUSH_LATEST}" == "true" ]]; then add_tag "latest"; fi
+            echo "Path: fallback (alias only)"
           fi
 
           echo "Computed tags:"
