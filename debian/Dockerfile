@@ -70,8 +70,9 @@ RUN set -eux; \
     curl -fsSL "https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz" -o /tmp/ioncube.tar.gz || true; \
     if [ -s /tmp/ioncube.tar.gz ]; then \
       tar -xzf /tmp/ioncube.tar.gz -C /tmp; \
-      cp "/tmp/ioncube/ioncube_loader_lin_${PHP_VERSION_SHORT}.so" "$(php -r 'echo ini_get(\"extension_dir\");')/" 2>/dev/null || true; \
-      echo "zend_extension=$(php -r 'echo ini_get(\"extension_dir\");')/ioncube_loader_lin_${PHP_VERSION_SHORT}.so" > /usr/local/etc/php/conf.d/00-ioncube.ini || true; \
+      PHP_EXT_DIR=$(php -r 'echo ini_get("extension_dir");'); \
+      cp "/tmp/ioncube/ioncube_loader_lin_${PHP_VERSION_SHORT}.so" "$PHP_EXT_DIR/" 2>/dev/null || true; \
+      echo "zend_extension=$PHP_EXT_DIR/ioncube_loader_lin_${PHP_VERSION_SHORT}.so" > /usr/local/etc/php/conf.d/00-ioncube.ini || true; \
     fi; \
     rm -rf /tmp/ioncube /tmp/ioncube.tar.gz; \
     \
