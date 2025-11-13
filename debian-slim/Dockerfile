@@ -56,6 +56,15 @@ RUN set -eux; \
     echo "${TZ}" > /etc/timezone; \
     ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime; \
     \
+    # (7) Composer + Echo Server (global) and clean caches
+    curl -fsSL https://getcomposer.org/installer -o /tmp/composer-setup.php; \
+    php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer; \
+    rm -f /tmp/composer-setup.php; \
+    composer --version; \
+    npm config set registry "${NPM_REGISTRY}"; \
+    npm i -g laravel-echo-server; \
+    npm cache clean --force; \
+    \
     # (5) Cleanup build deps in SAME layer + apt caches
     apt-get purge -y --auto-remove \
       $PHPIZE_DEPS \
