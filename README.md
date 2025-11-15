@@ -73,19 +73,19 @@ Using `laravel-boomkit` + `laravel-toolbox` provides:
 
 | ARG / ENV                    | Default Value                           | Description                              |
 | ---------------------------- | --------------------------------------- | ---------------------------------------- |
-| `USE_CUSTOM_APT_MIRROR`      | `false`                                 | Set to `true` to use a custom APT mirror |
-| `CUSTOM_APT_MIRROR`          | `http://deb.debian.org/debian`          | Custom Debian APT mirror URL             |
-| `CUSTOM_APT_SECURITY_MIRROR` | `http://deb.debian.org/debian-security` | Custom Debian security mirror URL        |
-| `NPM_REGISTRY`               | `https://registry.npmjs.org`            | NPM registry URL                         |
+| `USE_APT_MIRROR_URL`      | `false`                                 | Set to `true` to use a custom APT mirror |
+| `APT_MIRROR_URL`          | `http://deb.debian.org/debian`          | Custom Debian APT mirror URL             |
+| `APT_SECURITY_MIRROR_URL` | `http://deb.debian.org/debian-security` | Custom Debian security mirror URL        |
+| `NPM_MIRROR_URL`               | `https://registry.npmjs.org`            | NPM registry URL                         |
 
 **Example:**
 
 ```bash
 docker build \
-  --build-arg USE_CUSTOM_APT_MIRROR=true \
-  --build-arg CUSTOM_APT_MIRROR=https://mirror.example.com/apt/debian \
-  --build-arg CUSTOM_APT_SECURITY_MIRROR=https://mirror.example.com/apt/debian/security \
-  --build-arg NPM_REGISTRY=https://registry.example.com/ \
+  --build-arg USE_APT_MIRROR_URL=true \
+  --build-arg APT_MIRROR_URL=https://mirror.example.com/apt/debian \
+  --build-arg APT_SECURITY_MIRROR_URL=https://mirror.example.com/apt/debian/security \
+  --build-arg NPM_MIRROR_URL=https://registry.example.com/ \
   -t vanaboom/laravel-boomkit:base \
   ./base
 ```
