@@ -49,9 +49,6 @@ RUN set -eux; \
     php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer; \
     rm -f /tmp/composer-setup.php; \
     composer --version; \
-    npm config set registry "${NPM_MIRROR_URL}"; \
-    npm i -g laravel-echo-server; \
-    npm cache clean --force; \
     apt-get purge -y --auto-remove \
       $PHPIZE_DEPS \
       libfreetype6-dev libgmp-dev libicu-dev libjpeg-dev libonig-dev \
