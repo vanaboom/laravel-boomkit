@@ -1,5 +1,5 @@
 # Debian (Bookworm) SLIM: no MSSQL (and no sqlsrv/pdo_sqlsrv), no Node/NPM, no ionCube
-FROM php:8.4-cli-bookworm
+FROM php:8.4.15-cli-bookworm
 
 # ---------- OCI Labels ----------
 LABEL org.opencontainers.image.title="laravel-boomkit (debian-slim)"

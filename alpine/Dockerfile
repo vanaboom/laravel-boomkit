@@ -1,4 +1,4 @@
-FROM php:8.4-cli-alpine3.20
+FROM 8.4.15-alpine3.23
 
 # ---------- OCI Labels ----------
 LABEL org.opencontainers.image.title="laravel-boomkit (alpine)"

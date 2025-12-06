@@ -1,5 +1,5 @@
 # Debian (Bookworm) with MSSQL, Node/NPM, Echo Server, ionCube
-FROM php:8.4-cli-bookworm
+FROM php:8.4.15-cli-bookworm
 
 # ---------- OCI Labels ----------
 LABEL org.opencontainers.image.title="laravel-boomkit (debian-tools)"
