@@ -1,4 +1,4 @@
-FROM 8.4.15-alpine3.23
+FROM php:8.4.15-alpine3.23
 
 # ---------- OCI Labels ----------
 LABEL org.opencontainers.image.title="laravel-boomkit (alpine-slim)"
