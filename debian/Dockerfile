@@ -70,7 +70,7 @@ RUN set -eux; \
     docker-php-ext-configure gd --with-freetype --with-jpeg; \
     docker-php-ext-configure ldap --with-libdir=lib/x86_64-linux-gnu; \
     docker-php-ext-install -j"$(nproc)" \
-      bcmath gd gmp intl ldap mbstring opcache pcntl pdo pdo_pgsql \
+      bcmath gd gmp intl ldap mbstring opcache pcntl pdo pdo_mysql pdo_pgsql \
       pdo_sqlite pgsql sockets zip; \
     pecl channel-update pecl.php.net; \
     pecl install -o -f igbinary redis apcu yaml || true; \

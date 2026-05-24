@@ -17,7 +17,7 @@ This image works best when paired with [Laravel Toolbox](https://github.com/vana
 * Pre-installed **Composer** (latest version)
 * Common PHP extensions:
 
-    * `bcmath`, `gd`, `gmp`, `intl`, `ldap`, `mbstring`, `opcache`, `pcntl`, `pdo_pgsql`, `pgsql`, `sockets`, `zip`
+    * `bcmath`, `gd`, `gmp`, `intl`, `ldap`, `mbstring`, `opcache`, `pcntl`, `pdo_mysql`, `pdo_pgsql`, `pgsql`, `sockets`, `zip`
 * PECL extensions:
 
     * `apcu`, `pdo_sqlsrv`, `redis`, `sqlsrv`, `yaml`

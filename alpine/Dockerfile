@@ -26,7 +26,6 @@ RUN set -eux; \
       freetype-dev \
       gmp-dev \
       icu-dev \
-      ldb-dev \
       libjpeg-turbo-dev \
       libldap \
       libpng-dev \
@@ -36,6 +35,7 @@ RUN set -eux; \
       oniguruma-dev \
       openldap-dev \
       postgresql-dev \
+      samba-dev \
       sqlite-dev \
       tar \
       unixodbc-dev \
@@ -87,6 +87,7 @@ RUN set -eux; \
       opcache \
       pcntl \
       pdo \
+      pdo_mysql \
       pdo_pgsql \
       pdo_sqlite \
       pgsql \
