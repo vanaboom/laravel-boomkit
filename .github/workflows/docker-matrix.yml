@@ -11,7 +11,7 @@ on:
         required: false
         type: string
       variant:
-        description: "Build only one variant (debian|debian-slim|alpine|alpine-slim)"
+        description: "Build only one variant (debian|debian-slim|alpine|alpine-slim|alpine-frankenphp)"
         required: false
         type: string
 
@@ -48,6 +48,11 @@ jobs:
           - id: alpine-slim
             context: ./alpine-slim
             tag_suffix: alpine-slim
+            push_latest: false
+            platforms: linux/amd64
+          - id: alpine-frankenphp
+            context: ./alpine-frankenphp
+            tag_suffix: alpine-frankenphp
             push_latest: false
             platforms: linux/amd64
 
