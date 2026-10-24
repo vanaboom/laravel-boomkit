@@ -7,6 +7,10 @@
 A **production-ready Laravel Base Docker Image** built on **PHP 8.4** with Debian, Alpine, and FrankenPHP Alpine variants.
 Pre-installed with essential PHP extensions, PECL modules, MSSQL tools, Node.js, Composer, and Laravel Echo Server — everything you need to start a Laravel project without manual setup.
 
+All variants require **PHP 8.4.27 or newer within the 8.4 branch** for the fixes to CVE-2026-109618 and CVE-2026-109619. The CLI variants use PHP 8.4.27; FrankenPHP is pinned to an image digest verified to contain PHP 8.4.27. Every build checks the actual PHP version, including both CLI and embedded PHP in FrankenPHP, and fails if the requirement is not met.
+
+After rebuilding and publishing these base images, rebuild dependent application images with `docker build --pull` and recreate their containers. Existing images and running containers do not receive this fix automatically.
+
 This image works best when paired with [Laravel Toolbox](https://github.com/vanaboom/laravel-toolbox) — a complementary package that provides extra Laravel tooling and optimizations. Configuring both together in your Laravel application delivers the most efficient development and deployment experience.
 
 ---
@@ -83,7 +87,7 @@ Using `laravel-boomkit` + `laravel-toolbox` provides:
 | `APK_MIRROR_URL`          | `https://dl-cdn.alpinelinux.org/alpine` | Custom Alpine APK mirror URL             |
 | `NPM_MIRROR_URL`               | `https://registry.npmjs.org`            | NPM registry URL                         |
 | `DOCKER_REGISTRY`         | `docker.io`                             | Registry prefix or Docker Hub mirror used by variants such as `alpine-frankenphp` |
-| `FRANKENPHP_IMAGE`        | `dunglas/frankenphp:1-php8.4-alpine`    | Base FrankenPHP image for `alpine-frankenphp` |
+| `FRANKENPHP_IMAGE`        | `dunglas/frankenphp:1-php8.4-alpine@sha256:52607cd27bc48f994b4d843f1d850ef745accd55a77255f9882f6e4b1b04a92e` | Base FrankenPHP image; overrides must contain PHP 8.4.27 or newer within 8.4 in both runtimes |
 
 **Example:**
 

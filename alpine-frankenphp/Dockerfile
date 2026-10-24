@@ -1,7 +1,14 @@
 ARG DOCKER_REGISTRY=docker.io
-ARG FRANKENPHP_IMAGE=dunglas/frankenphp:1-php8.4-alpine
+ARG FRANKENPHP_IMAGE=dunglas/frankenphp:1-php8.4-alpine@sha256:52607cd27bc48f994b4d843f1d850ef745accd55a77255f9882f6e4b1b04a92e
 
 FROM ${DOCKER_REGISTRY}/${FRANKENPHP_IMAGE}
+
+# Check both runtimes, including custom images and registry mirrors.
+# Require the PHP fixes for CVE-2026-109618 and CVE-2026-109619.
+RUN set -eu; \
+    check='if (PHP_MAJOR_VERSION !== 8 || PHP_MINOR_VERSION !== 4 || version_compare(PHP_VERSION, "8.4.27", "<")) { fwrite(STDERR, "PHP 8.4.27 or newer within 8.4 is required; found " . PHP_VERSION . PHP_EOL); exit(1); }'; \
+    php -r "$check"; \
+    frankenphp php-cli -r "$check"
 
 # ---------- OCI Labels ----------
 LABEL org.opencontainers.image.title="laravel-boomkit (alpine-frankenphp)"

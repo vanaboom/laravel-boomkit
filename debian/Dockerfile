@@ -1,5 +1,8 @@
 # Debian (Bookworm) with MSSQL, Node/NPM, Echo Server, ionCube
-FROM php:8.4.15-cli-bookworm
+FROM php:8.4.27-cli-bookworm
+
+# Require the PHP fixes for CVE-2026-109618 and CVE-2026-109619.
+RUN php -r 'if (PHP_MAJOR_VERSION !== 8 || PHP_MINOR_VERSION !== 4 || version_compare(PHP_VERSION, "8.4.27", "<")) { fwrite(STDERR, "PHP 8.4.27 or newer within 8.4 is required; found " . PHP_VERSION . PHP_EOL); exit(1); }'
 
 # ---------- OCI Labels ----------
 LABEL org.opencontainers.image.title="laravel-boomkit (debian-tools)"

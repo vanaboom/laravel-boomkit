@@ -155,6 +155,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
+          pull: true
           push: true
           platforms: ${{ matrix.platforms }}
           tags: ${{ steps.meta.outputs.tags }}
